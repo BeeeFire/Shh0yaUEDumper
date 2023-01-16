@@ -457,11 +457,12 @@ public:
 };
 
 struct FUObjectItem {
-	PVOID Object;
+	UObject *Object;
 	DWORD Flags;
 	DWORD ClusterRootIndex;
 	DWORD SerialNumber;
-	DWORD Reserved;
+	DWORD64 StatPointer;
+	//DWORD64 StatPointer2;
 };
 
 struct TUObjectArray {

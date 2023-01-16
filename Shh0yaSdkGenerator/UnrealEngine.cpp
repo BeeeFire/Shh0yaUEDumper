@@ -281,7 +281,9 @@ DWORD FNameEntry::GetEntrySize()
 
 DWORD FNameEntry::GetLength()
 {
-	return (this->Header.Len << 1) >> 6;
+	DWORD test1 = (this->Header.Len << 1) >> 6;
+	DWORD test2 = (this->Header.Len >> 5);
+	return test2; 
 }
 
 BOOLEAN FNameEntry::IsWide()
@@ -300,6 +302,7 @@ DWORD TUObjectArray::GetObjectNum()
 }
 
 DWORD TUObjectArray::GetObjectChunk()
+
 {
 	return NumChunks;
 }
@@ -307,15 +310,14 @@ DWORD TUObjectArray::GetObjectChunk()
 UObject* TUObjectArray::GetObjDump(DWORD Id, std::filesystem::path Path)
 {
 	if (!ofs.is_open()) { ofs.open(Path / "Objects.txt"); }
-	UObject* Object = ObjObjects.GetObjectPtr(Id);
-	if (Object == nullptr) { return nullptr; }
-
-	std::string FullName = Object->GetFullName();
+	UObject* item = ObjObjects.GetObjectPtr(Id);
+	if (item == nullptr) { return nullptr; }
+	std::string FullName = item->GetFullName();
+	//std::string FullName = test.Object->GetFullName();
 	char Buffer[256] = { 0, };
-	sprintf(Buffer, "[%.6d] [0x%llX] ", Id, Object);
+	sprintf(Buffer, "[%.6d] [0x%llX] ", Id, item);
 	ofs << std::string(Buffer) + FullName << std::endl;
-
-	return Object;
+	return item;
 }
 
 UObject* TUObjectArray::GetObjectPtr(DWORD index)
@@ -326,19 +328,22 @@ UObject* TUObjectArray::GetObjectPtr(DWORD index)
 	if (!IsValidIndex(index)) { ErrLog("Invalid object index\n"); return nullptr; }
 	if (!(ChunkIndex < NumChunks)) { ErrLog("Invalid chunk index\n"); return nullptr; }
 	FUObjectItem* Chunk = Read<FUObjectItem*>(&Objects[ChunkIndex]);
-	FUObjectItem* Object = Read<FUObjectItem*>(Chunk + WithinChunkIndex);
-
-	return (UObject*)Object;
+	//uintptr_t test = (uintptr_t)Chunk + (sizeof(FUObjectItem) * WithinChunkIndex);
+	PVOID test = Chunk + (WithinChunkIndex);
+	UObject* Object = (UObject*)Read<FUObjectItem*>(test);
+	//printf("\tChunk : %p, within_chhunk_index:%d\n", Chunk, WithinChunkIndex);
+	//printf("\tITem : %p\n", Object);
+	return Object;
 }
 
 UObject* TUObjectArray::FindObject(std::string Name)
 {
 	for (int i = 0; i < NumElements; i++)
 	{
-		UObject* Object = GetObjectPtr(i);
-		if (Object->GetFullName() == Name)
+		UObject* item = GetObjectPtr(i);
+		if (item->GetFullName() == Name)
 		{
-			return Object;
+			return item;
 		}
 	}
 	return nullptr;
@@ -396,7 +401,6 @@ std::string UObject::GetName()
 	}
 	auto pos = Name.rfind('/');
 	if (pos != std::string::npos) { Name = Name.substr(pos + 1); }
-
 	return Name;
 }
 
@@ -785,8 +789,6 @@ VOID UPackage::GenerateStruct(UStruct* StructObj, std::vector<OutStruct>& ArrStr
 			GeneratePadding(os.Members, Offset, BitOffset, m.Offset);
 		}
 
-
-
 		if (type.first == PropertyType::BoolProperty && *(DWORD*)type.second.data() != *(DWORD*)"bool")
 		{
 			auto BoolProperty = reinterpret_cast<FBoolProperty*>(Property);
@@ -1142,3 +1144,4 @@ std::string FInterfaceProperty::GetType()
 {
 	return "struct TScriptInterface<" + GetInterfaceClass()->GetType().second + ">";
 }
+

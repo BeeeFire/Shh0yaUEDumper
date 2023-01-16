@@ -30,12 +30,13 @@ class Dumper {
 
 private:
 	Dumper() { DumperData = { 0, }; memory = nullptr; };
+	~Dumper() {}
 
 public:
 	DUMPER_DATA DumperData;
 	Memory* memory;
 
-	static Dumper* GetInstance() { Dumper dump = Dumper(); return &dump; };
+	static Dumper* GetInstance() { static Dumper dump = Dumper(); return &dump; };
 	DUMP_STATUS InitializeDumper();
 	DUMP_STATUS Dump();
 	BOOLEAN NameDump();
@@ -66,7 +67,7 @@ typedef struct _ENGINE_OFFSET
 		}Common;
 	};
 
-	struct UE4261
+	/*struct UE4261
 	{
 		USHORT Stride = 2;
 		struct {
@@ -74,6 +75,22 @@ typedef struct _ENGINE_OFFSET
 			char* ObjectPattern = const_cast <char*>("\x48\x8D\x0D\x00\x00\x00\x00\x44\x8B\x84\x24");
 			char* NameMask = const_cast <char*>("xxx????xx");
 			char* ObjectMask = const_cast <char*>("xxx????xxxx");
+			DWORD NameInstruction = 3;
+			DWORD NameInstCount = 7;
+			DWORD ObjectInstruction = 3;
+			DWORD ObjectInstCount = 7;
+		}Common;
+	};*/
+
+
+	struct UE4261
+	{
+		USHORT Stride = 2;
+		struct {
+			char* NamePattern = const_cast <char*>("\x48\x8d\x0d\x00\x00\x00\x00\xe8\x13\x00\x00\x00\x4c\x8b\xc0\xc6\x05\x00\x00\x00\x00\x01");
+			char* ObjectPattern = const_cast <char*>("\x48\x8d\x0d\x00\x00\x00\x00\xe8\xe1\x00\x00\x00\x48\x8d\x8d\x00\x00\x00\x00\xff\x15\x00\x00\x00\x00");
+			char* NameMask = const_cast <char*>("xxx????xx???xxxxx????x");
+			char* ObjectMask = const_cast <char*>("xxx????xx???xxx????xx????");
 			DWORD NameInstruction = 3;
 			DWORD NameInstCount = 7;
 			DWORD ObjectInstruction = 3;

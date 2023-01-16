@@ -51,11 +51,13 @@ BOOLEAN Dumper::GetProcessInfo()
 	VS_FIXEDFILEINFO version = { 0, };
 
 	HWND WindowHandle = FindWindowA("UnrealWindow", NULL);
-	if (!WindowHandle) { ErrorHandler(DUMP_STATUS::DUMPER_WINDOW_NOT_FOUND, GetLastError()); return FALSE; }
+	//HWND WindowHandle = FindWindowA("ConsoleWindowClass", NULL);
+	if (!WindowHandle) { 
+		ErrorHandler(DUMP_STATUS::DUMPER_WINDOW_NOT_FOUND, GetLastError()); return FALSE; 
+	}
 
 	GetWindowThreadProcessId(WindowHandle, &DumperData.ProcessId);
 	if (!DumperData.ProcessId) { ErrorHandler(DUMP_STATUS::DUMPER_PID_NOT_FOUND, GetLastError()); return FALSE; }
-	CloseHandle(WindowHandle);
 
 	DumperData.ProcessHandle = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_QUERY_INFORMATION, FALSE, DumperData.ProcessId);
 	if (!DumperData.ProcessHandle) { ErrorHandler(DUMP_STATUS::DUMPER_FAILED_OPEN_PROCESS, GetLastError()); return FALSE; }
@@ -94,7 +96,7 @@ BOOLEAN Dumper::GetProcessInfo()
 	}
 	if (!DumperData.ImageBegin) { ErrorHandler(DUMP_STATUS::DUMPER_FAILED_GET_MEM_INFO, 0); return FALSE; }
 
-	if (!CheckConfig(ProcPath)) { ErrorHandler(DUMP_STATUS::DUMPER_NOT_SUPPORTED_VERSION, 0); exit(-1); }
+	//if(!CheckConfig(ProcPath)) { ErrorHandler(DUMP_STATUS::DUMPER_NOT_SUPPORTED_VERSION, 0); exit(-1); }
 
 	return TRUE;
 }
@@ -173,6 +175,7 @@ BOOLEAN Dumper::CheckConfig(wchar_t* FilePath)
 
 DUMP_STATUS Dumper::Dump()
 {
+
 	switch ((UE_VERSION)DumperData.Config.Version)
 	{
 	case UE_VERSION::UnrealEngine4_20_3:
@@ -218,7 +221,14 @@ DUMP_STATUS Dumper::Dump()
 		break;
 	}
 	default:
-		return DUMP_STATUS::DUMPER_NOT_SUPPORTED_VERSION;
+		ENGINE_OFFSET::UE4261 OffsetInfo = { 0, };
+		if (!GetPtrByPattern(&OffsetInfo)) { return DUMP_STATUS::DUMPER_FAILED_OBJECT_INIT; }
+		//if (!NameDump() || !ObjectDump()) { return DUMP_STATUS::DUMPER_FAILED_DUMP; }
+		if (!ObjectDump()) { return DUMP_STATUS::DUMPER_FAILED_DUMP; }
+		if (!SdkGenerator()) { return DUMP_STATUS::DUMPER_FAIELD_SDK_GEN; }
+		break;
+
+		//return DUMP_STATUS::DUMPER_NOT_SUPPORTED_VERSION;
 	}
 
 	return DUMP_STATUS::DUMPER_SUCCESS;
@@ -228,7 +238,8 @@ BOOLEAN Dumper::NameDump()
 {
 	clock_t start = clock();
 	DWORD NameCount = 0;
-	for (int i = 0; i < NamePoolData->GetBlockSize() +1; i++)
+	DWORD BlockSize = NamePoolData->GetBlockSize();
+	for (int i = 0; i < BlockSize +1; i++)
 	{
 		FNameEntry* NameBlockPtr = Read<FNameEntry*>(&NamePoolData->Entries.Blocks[i]);
 		NameCount += NameBlockPtr->GetNameDump(i,DumperData.BasePath);
@@ -259,7 +270,6 @@ BOOLEAN Dumper::ObjectDump()
 		{
 			auto PackObj = Object->GetPackageObject();
 			PackageObject[PackObj].push_back(Object);
-			
 		}
 		ObjectCount++;
 	}
